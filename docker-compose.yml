@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  r2k-zookeeper:
+    container_name: r2k-zookeeper
+    hostname: r2k-zookeeper
+    image: wurstmeister/zookeeper:latest
+    ports:
+      - 12181:2181
+
+  r2k-kafka:
+    container_name: r2k-kafka
+    hostname: r2k-kafka
+    image: wurstmeister/kafka:latest
+    ports:
+      - 39992:29992
+      - 19092:9092
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: r2k-kafka
+      KAFKA_CREATE_TOPICS: "test:1:1"
+      KAFKA_ZOOKEEPER_CONNECT: r2k-zookeeper:2181
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  r2k-mysql:
+    container_name: r2k-mysql
+    hostname: r2k-mysql
+    image: percona:8.0
+    command: [ '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci','--default-authentication-plugin=mysql_native_password' ]
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    ports:
+      - 13306:3306/tcp
+
+  r2k-worker:
+    container_name: r2k-worker
+    hostname: r2k-worker
+    build:
+      context: .
+    environment:
+      KAFKA_DEBUG: "false"
+      KAFKA_BROKER: "r2k-kafka:9092"
+      KAFKA_TOPIC: "test"
+      KAFKA_RETRIES: "3"
+      KAFKA_TIMEOUT: "10000"
+
+      REPLICATOR_DEBUG: "false"
+      REPLICATOR_USER: "root"
+      REPLICATOR_HOST: "r2k-mysql"
+      REPLICATOR_PASSWORD: "root"
+      REPLICATOR_PORT: "3306"
+      REPLICATOR_SLAVE_ID: "100"
+      REPLICATOR_START_FROM_GTID: ""
+      REPLICATOR_START_BIN_LOG_FILE_NAME: ""
+      REPLICATOR_START_BIN_LOG_POSITION: "0"
+      REPLICATOR_START_FROM_MARIA_DB_GTID: ""
+      REPLICATOR_TABLE_CACHE: "1024"
+      REPLICATOR_HEARTBEAT: "0.0"
+      REPLICATOR_LISTEN_ON_TABLES: ""
+      REPLICATOR_LISTEN_ON_DATABASES: ""
+      REPLICATOR_LISTEN_EVENT_IDS: "" # look for ids in MySQLReplication\Definitions\ConstEventType::class
+      REPLICATOR_IGNORE_EVENT_IDS: ""
